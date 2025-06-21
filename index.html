@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安全跳转页面</title>
+    <title>安全支付跳转</title>
     <style>
         body {
             margin: 0;
@@ -27,47 +27,109 @@
             transform: translate(-50%, -50%);
             font-family: Arial;
         }
+        #wechat-tip {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            text-align: center;
+            padding-top: 30%;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
     <div id="loading">正在安全跳转中...</div>
     <div id="frame-container"></div>
+    <div id="wechat-tip">
+        <h2>支付提示</h2>
+        <p>正在为您调起微信支付...</p>
+    </div>
 
     <script>
-        // 目标URL（替换为实际需要跳转的地址）
-        const TARGET_URL = 'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ';
-        
-        // 备用域名池（需自行配置）
-        const DOMAIN_POOL = [
-            'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ',
-            'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ'
-        ];
+        // 配置参数
+        const CONFIG = {
+            target: 'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ',
+            proxies: [
+                'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ',
+                'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ'
+            ],
+            wechatPayUrls: [
+                'pay.xffuw.com',
+                'wx.tenpay.com'
+            ]
+        };
 
-        // 设备自适应设置
+        // 检测微信环境
+        function isWeChat() {
+            return /MicroMessenger/i.test(navigator.userAgent);
+        }
+
+        // 处理支付链接
+        function handleWeChatPay(url) {
+            document.getElementById('wechat-tip').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = url;
+            }, 500);
+        }
+
+        // 初始化iframe
         function initFrame() {
             const container = document.getElementById('frame-container');
-            const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            // 动态创建iframe
             const iframe = document.createElement('iframe');
-            iframe.setAttribute('sandbox', 'allow-same-origin allow-forms allow-scripts allow-popups');
+            
+            // 增强sandbox权限
+            iframe.setAttribute('sandbox', 
+                'allow-same-origin allow-forms allow-scripts allow-popups allow-top-navigation');
+            
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             
-            // 选择随机备用域名
-            const proxyUrl = DOMAIN_POOL[Math.floor(Math.random() * DOMAIN_POOL.length)] + 
-                            '?url=' + encodeURIComponent(TARGET_URL);
+            // 随机选择代理
+            const proxyUrl = CONFIG.proxies[Math.floor(Math.random() * CONFIG.proxies.length)] + 
+                           '?url=' + encodeURIComponent(CONFIG.target);
             
             iframe.src = proxyUrl;
             container.appendChild(iframe);
-            
-            // 隐藏加载提示
-            iframe.onload = function() {
+
+            // 监听支付请求
+            window.addEventListener('message', (e) => {
+                if (e.data.type === 'PAYMENT_REQUEST') {
+                    if (isWeChat()) {
+                        handleWeChatPay(e.data.url);
+                    } else {
+                        window.open(e.data.url, '_blank');
+                    }
+                }
+            });
+
+            iframe.onload = () => {
                 document.getElementById('loading').style.display = 'none';
+                
+                // 注入支付检测脚本
+                iframe.contentWindow.postMessage({
+                    type: 'INJECT_SCRIPT',
+                    script: `
+                        document.addEventListener('click', (e) => {
+                            const link = e.target.closest('a');
+                            if (link && ${JSON.stringify(CONFIG.wechatPayUrls)}.some(
+                                domain => link.href.includes(domain))) {
+                                e.preventDefault();
+                                parent.postMessage({
+                                    type: 'PAYMENT_REQUEST',
+                                    url: link.href
+                                }, '*');
+                            }
+                        }, true);
+                    `
+                }, '*');
             };
         }
 
-        // 页面加载后初始化
         window.onload = initFrame;
     </script>
 </body>
