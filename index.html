@@ -3,72 +3,119 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安全跳转页面</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全访问代理</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: #f5f5f5;
-        }
-        #frame-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
+        body { margin:0; overflow:hidden; background:#f5f5f5 }
+        #proxy-frame { 
+            width:100vw; height:100vh; 
+            border:none; position:fixed;
+            top:0; left:0 
         }
         #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-family: Arial;
+            position:fixed; top:50%; left:50%;
+            transform:translate(-50%,-50%);
+            font-family:Arial; color:#666;
         }
     </style>
 </head>
 <body>
-    <div id="loading">正在安全跳转中...</div>
-    <div id="frame-container"></div>
+    <div id="loading">正在初始化安全通道...</div>
+    <iframe id="proxy-frame" sandbox="allow-same-origin allow-forms allow-scripts allow-popups allow-top-navigation"></iframe>
 
     <script>
-        // 目标URL（替换为实际需要跳转的地址）
-        const TARGET_URL = 'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ';
-        
-        // 备用域名池（需自行配置）
-        const DOMAIN_POOL = [
-            'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ',
-            'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ'
-        ];
-
-        // 设备自适应设置
-        function initFrame() {
-            const container = document.getElementById('frame-container');
-            const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            // 动态创建iframe
-            const iframe = document.createElement('iframe');
-            iframe.setAttribute('sandbox', 'allow-same-origin allow-forms allow-scripts allow-popups');
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            
-            // 选择随机备用域名
-            const proxyUrl = DOMAIN_POOL[Math.floor(Math.random() * DOMAIN_POOL.length)] + 
-                            '?url=' + encodeURIComponent(TARGET_URL);
-            
-            iframe.src = proxyUrl;
-            container.appendChild(iframe);
-            
-            // 隐藏加载提示
-            iframe.onload = function() {
-                document.getElementById('loading').style.display = 'none';
-            };
+        // 内置代理模拟器（实际使用应替换为真实代理服务）
+        function createVirtualProxy() {
+            return `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <script>
+                        window.addEventListener('message', function(e) {
+                            if(e.data.type === 'FETCH_REQUEST') {
+                                fetch(e.data.url)
+                                    .then(res => res.text())
+                                    .then(html => {
+                                        window.parent.postMessage({
+                                            type: 'FETCH_RESPONSE',
+                                            html: html,
+                                            url: e.data.url
+                                        }, '*');
+                                    });
+                            }
+                        });
+                    </script>
+                </head>
+                <body></body>
+                </html>
+            `;
         }
 
-        // 页面加载后初始化
-        window.onload = initFrame;
+        // 主代理控制器
+        class ProxyController {
+            constructor() {
+                this.iframe = document.getElementById('proxy-frame');
+                this.loading = document.getElementById('loading');
+                this.currentUrl = 'https://xz.xffwz.com/s/TURBd01EQXdNREF3TUg3TGVIQQ'; // 默认起始页
+                this.init();
+            }
+
+            init() {
+                // 使用Blob URL加载虚拟代理
+                const proxyHtml = createVirtualProxy();
+                const blob = new Blob([proxyHtml], {type: 'text/html'});
+                this.iframe.src = URL.createObjectURL(blob);
+                
+                this.iframe.onload = () => {
+                    this.loadUrl(this.currentUrl);
+                    this.loading.style.display = 'none';
+                    
+                    // 监听内部跳转请求
+                    window.addEventListener('message', (e) => {
+                        if (e.data.type === 'NAVIGATE_REQUEST') {
+                            this.loadUrl(e.data.url);
+                        } else if (e.data.type === 'FETCH_RESPONSE') {
+                            this.renderPage(e.data.html, e.data.url);
+                        }
+                    });
+                };
+            }
+
+            loadUrl(url) {
+                this.currentUrl = url;
+                this.iframe.contentWindow.postMessage({
+                    type: 'FETCH_REQUEST',
+                    url: url
+                }, '*');
+            }
+
+            renderPage(html, url) {
+                // 注入跳转控制脚本
+                const injectedScript = `
+                    <script>
+                        document.addEventListener('click', function(e) {
+                            if(e.target.tagName === 'A') {
+                                e.preventDefault();
+                                parent.postMessage({
+                                    type: 'NAVIGATE_REQUEST',
+                                    url: e.target.href
+                                }, '*');
+                            }
+                        }, true);
+                    </script>
+                `;
+                html = html.replace('</body>', injectedScript + '</body>');
+                
+                // 更新iframe内容
+                this.iframe.srcdoc = html;
+                history.replaceState(null, '', `?url=${encodeURIComponent(url)}`);
+            }
+        }
+
+        // 启动代理系统
+        new ProxyController();
     </script>
 </body>
 </html>
