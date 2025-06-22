@@ -73,7 +73,6 @@
       width: 100%;
       top: 50%;
       transform: translateY(-50%);
-      text-shadow: 1px 1px 1px #fff;
     }
 
     /* iframe样式 */
@@ -86,7 +85,6 @@
     }
   </style>
 </head>
-
 <body>
   <!-- 三点加载动画容器 -->
   <div class="container" id="loadingContainer">
@@ -102,40 +100,20 @@
 
   <script>
     (function() {
-      // 白名单域名配置（预留位置方便后期添加）
+      // 白名单域名配置（包含预留位置）
       const WHITELIST_CONFIG = {
         domains: [
-          'xffwz.com',
-          // 预留位置：在此添加新的白名单域名
+          'xffwz.com',   // 示例域名，实际使用时请更换
+          // 预留位置（在此添加允许的域名，例如：
           // 'example.com',
-          // 'another-domain.net'
+          // 'another-example.com'
         ],
-        // 预留其他配置项
         watermarkText: '小富富网络通知你未授权请联系小富富付费'
       };
 
-      // 显示三点加载动画
-      function showLoadingAnimation() {
-        document.getElementById('loadingContainer').style.display = 'block';
-      }
-
-      // 验证URL域名是否在白名单
-      function isAllowedDomain(url) {
-        try {
-          const domain = new URL(url).hostname.replace('www.', '');
-          return WHITELIST_CONFIG.domains.some(allowedDomain => {
-            return domain === allowedDomain || 
-                   domain.endsWith('.' + allowedDomain);
-          });
-        } catch (e) {
-          console.error('URL解析失败:', e);
-          return false;
-        }
-      }
-     
       // 主处理逻辑
       function processRedirect() {
-        showLoadingAnimation();
+        document.getElementById('loadingContainer').style.display = 'block';
         
         const urlParams = new URLSearchParams(window.location.search);
         const encodedParam = urlParams.get('c');
@@ -149,29 +127,57 @@
         try {
           const trueUrl = atob(encodedParam);
           if (trueUrl.includes("http")) {
-            // 检查域名是否在白名单
             if (!isAllowedDomain(trueUrl)) {
               document.getElementById('watermark').style.display = 'block';
-              document.querySelector('.watermark-text').textContent = WHITELIST_CONFIG.watermarkText;
             }
             
-            // 创建并加载iframe
             const iframe = document.createElement('iframe');
             iframe.className = 'content';
             iframe.src = trueUrl;
             
-            iframe.addEventListener('load', function() {
+            iframe.onload = function() {
               document.getElementById('loadingContainer').style.display = 'none';
-            });
+            };
             
             document.body.appendChild(iframe);
           }
         } catch (e) {
-          console.error('URL解码失败:', e);
           document.getElementById('watermark').style.display = 'block';
           document.getElementById('loadingContainer').style.display = 'none';
         }
       }
+
+      // 域名验证函数
+      function isAllowedDomain(url) {
+        try {
+          const domain = new URL(url).hostname.replace('www.', '');
+          return WHITELIST_CONFIG.domains.some(allowedDomain => {
+            return domain === allowedDomain || domain.endsWith('.' + allowedDomain);
+          });
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // 增强安全防护
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener('keydown', e => {
+        if (['F12', 'Ctrl+Shift+I', 'Ctrl+U'].some(k => e.key === k || 
+            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+            (e.ctrlKey && e.key === 'u'))) {
+          e.preventDefault();
+        }
+      });
+
+      // 控制台打开检测（增强）
+      (function() {
+        let devtools = function() {};
+        devtools.toString = function() {
+          document.body.innerHTML = '<h1 style="color:red;text-align:center;">开发者工具访问已被禁止</h1>';
+          return '';
+        };
+        console.log('%c', devtools);
+      })();
 
       processRedirect();
     })();
