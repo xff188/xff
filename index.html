@@ -1,24 +1,40 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>安全跳转页面</title>
+  <title>安全跳转网关</title>
   <style>
-    /* 三点加载动画样式 */
+    :root {
+      --primary: #4361ee;
+      --error: #f72585;
+      --bg: #f8f9fa;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 三点加载动画 */
     .container {
-      width: 100px;
-      height: 100px;
+      width: 110px;
+      height: 110px;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: rotate-move 2s ease-in-out infinite;
+      animation: rotate-move 1.8s cubic-bezier(0.65,0,0.35,1) infinite;
       display: none;
     }
     .dot {
-      width: 15px;
-      height: 15px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       position: absolute;
       top: 0;
@@ -26,53 +42,65 @@
       left: 0;
       right: 0;
       margin: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
-    .dot-3 { background-color: #f74d75; animation: dot-3-move 2s ease infinite; }
-    .dot-2 { background-color: #10beae; animation: dot-2-move 2s ease infinite; }
-    .dot-1 { background-color: #ffe386; animation: dot-1-move 2s ease infinite; }
+    .dot-3 { 
+      background: linear-gradient(135deg, #f74d75, #ff2d55);
+      animation: dot-3-move 1.8s ease infinite;
+    }
+    .dot-2 { 
+      background: linear-gradient(135deg, #10beae, #0ba899);
+      animation: dot-2-move 1.8s ease infinite;
+    }
+    .dot-1 { 
+      background: linear-gradient(135deg, #ffe386, #ffd700);
+      animation: dot-1-move 1.8s ease infinite;
+    }
     
     @keyframes dot-3-move {
       20%,100% { transform: scale(1) }
-      45%,80% { transform: translateY(-18px) scale(.45) }
+      45%,80% { transform: translateY(-20px) scale(.5) }
     }
     @keyframes dot-2-move {
       20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(-16px, 12px) scale(.45) }
+      45%,80% { transform: translate(-18px, 14px) scale(.5) }
     }
     @keyframes dot-1-move {
       20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(16px, 12px) scale(.45) }
+      45%,80% { transform: translate(18px, 14px) scale(.5) }
     }
     @keyframes rotate-move {
       55% { transform: translate(-50%, -50%) rotate(0deg) }
       80%,100% { transform: translate(-50%, -50%) rotate(360deg) }
     }
 
-    /* 全局水印样式 */
+    /* 水印效果 */
     .watermark {
       position: fixed;
       pointer-events: none;
       width: 100%;
       height: 100%;
-      background-image: repeating-linear-gradient(
+      background: repeating-linear-gradient(
         -45deg,
-        rgba(255, 0, 0, 0.1),
-        rgba(255, 0, 0, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 40px
+        rgba(255, 0, 0, 0.08),
+        rgba(255, 0, 0, 0.08) 15px,
+        rgba(0, 0, 255, 0.08) 15px,
+        rgba(0, 0, 255, 0.08) 30px
       );
       z-index: 9999;
       display: none;
     }
     .watermark-text {
       position: absolute;
-      color: rgba(255, 0, 0, 0.6);
-      font-size: 18px;
-      font-weight: bold;
+      color: rgba(255, 0, 0, 0.7);
+      font-size: 22px;
+      font-weight: 700;
       text-align: center;
       width: 100%;
       top: 50%;
       transform: translateY(-50%);
+      text-shadow: 0 1px 3px rgba(255,255,255,0.5);
+      letter-spacing: 2px;
     }
 
     /* iframe样式 */
@@ -82,68 +110,86 @@
       position: fixed;
       inset: -2px;
       z-index: 1;
+      border: none;
+    }
+
+    /* 开发者工具检测样式 */
+    #devtools-detected {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      color: red;
+      font-size: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 99999;
+      display: none;
     }
   </style>
 </head>
+
 <body>
-  <!-- 三点加载动画容器 -->
   <div class="container" id="loadingContainer">
     <div class="dot dot-1"></div>
     <div class="dot dot-2"></div>
     <div class="dot dot-3"></div>
   </div>
 
-  <!-- 全局水印 -->
   <div class="watermark" id="watermark">
     <div class="watermark-text">小富富网络通知你未授权请联系小富富付费</div>
   </div>
 
+  <div id="devtools-detected">
+    <h1>开发者工具访问已被禁止</h1>
+  </div>
+
   <script>
     (function() {
-      // 白名单域名配置（包含预留位置）
+      // 白名单域名配置（含预留位置）
       const WHITELIST_CONFIG = {
         domains: [
-          'xffwz.com',   // 示例域名，实际使用时请更换
-          // 预留位置（在此添加允许的域名，例如：
-          // 'example.com',
-          // 'another-example.com'
+          'xffwz.com',   // 主域名
+          // 预留位置开始（按需添加新域名）
+          // 'your-domain1.com',
+          // 'your-domain2.net',
+          // 预留位置结束
         ],
         watermarkText: '小富富网络通知你未授权请联系小富富付费'
       };
 
-      // 主处理逻辑
-      function processRedirect() {
-        document.getElementById('loadingContainer').style.display = 'block';
+      // 开发者工具检测
+      function detectDevTools() {
+        const devtoolsDetected = document.getElementById('devtools-detected');
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedParam = urlParams.get('c');
+        // 方法1：窗口大小检测
+        const widthThreshold = window.outerWidth - window.innerWidth > 160;
+        const heightThreshold = window.outerHeight - window.innerHeight > 160;
         
-        if (!encodedParam) {
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
-          return;
-        }
+        // 方法2：调试函数检测
+        let devtools = /./;
+        devtools.toString = function() {
+          devtoolsDetected.style.display = 'flex';
+          return '';
+        };
         
-        try {
-          const trueUrl = atob(encodedParam);
-          if (trueUrl.includes("http")) {
-            if (!isAllowedDomain(trueUrl)) {
-              document.getElementById('watermark').style.display = 'block';
-            }
-            
-            const iframe = document.createElement('iframe');
-            iframe.className = 'content';
-            iframe.src = trueUrl;
-            
-            iframe.onload = function() {
-              document.getElementById('loadingContainer').style.display = 'none';
-            };
-            
-            document.body.appendChild(iframe);
+        // 方法3：定时器检测
+        let lastTime = Date.now();
+        setInterval(() => {
+          const time = Date.now();
+          if (time > lastTime + 200) {
+            devtoolsDetected.style.display = 'flex';
           }
-        } catch (e) {
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
+          lastTime = time;
+        }, 100);
+
+        console.log('%c', devtools);
+        
+        if (widthThreshold || heightThreshold) {
+          devtoolsDetected.style.display = 'flex';
         }
       }
 
@@ -159,26 +205,80 @@
         }
       }
 
-      // 增强安全防护
+      // 主处理逻辑
+      function processRedirect() {
+        const loadingEl = document.getElementById('loadingContainer');
+        const watermarkEl = document.getElementById('watermark');
+        
+        loadingEl.style.display = 'block';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedParam = urlParams.get('c');
+        
+        // 无跳转参数时显示水印
+        if (!encodedParam) {
+          watermarkEl.style.display = 'block';
+          loadingEl.style.display = 'none';
+          return;
+        }
+        
+        try {
+          const trueUrl = atob(encodedParam);
+          if (trueUrl.includes("http")) {
+            // 域名不在白名单时显示水印
+            if (!isAllowedDomain(trueUrl)) {
+              watermarkEl.style.display = 'block';
+            }
+            
+            // 创建跳转iframe
+            const iframe = document.createElement('iframe');
+            iframe.className = 'content';
+            iframe.src = trueUrl;
+            
+            iframe.onload = function() {
+              loadingEl.style.display = 'none';
+            };
+            
+            iframe.onerror = function() {
+              watermarkEl.style.display = 'block';
+              loadingEl.style.display = 'none';
+            };
+            
+            document.body.appendChild(iframe);
+          }
+        } catch (e) {
+          watermarkEl.style.display = 'block';
+          loadingEl.style.display = 'none';
+        }
+      }
+
+      // 安全防护（防开发者工具）
       document.addEventListener('contextmenu', e => e.preventDefault());
+      
       document.addEventListener('keydown', e => {
-        if (['F12', 'Ctrl+Shift+I', 'Ctrl+U'].some(k => e.key === k || 
-            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-            (e.ctrlKey && e.key === 'u'))) {
+        const blockedCombinations = [
+          'F12', 
+          'Ctrl+Shift+I', 
+          'Ctrl+U',
+          'Ctrl+Shift+J',
+          'Ctrl+Alt+I',
+          'Shift+F10'
+        ];
+        
+        const currentComb = [
+          e.ctrlKey ? 'Ctrl+' : '',
+          e.shiftKey ? 'Shift+' : '',
+          e.altKey ? 'Alt+' : '',
+          e.key
+        ].join('');
+        
+        if (blockedCombinations.includes(currentComb.replace(/\+$/,''))) {
           e.preventDefault();
+          document.getElementById('devtools-detected').style.display = 'flex';
         }
       });
 
-      // 控制台打开检测（增强）
-      (function() {
-        let devtools = function() {};
-        devtools.toString = function() {
-          document.body.innerHTML = '<h1 style="color:red;text-align:center;">开发者工具访问已被禁止</h1>';
-          return '';
-        };
-        console.log('%c', devtools);
-      })();
-
+      detectDevTools();
       processRedirect();
     })();
   </script>
