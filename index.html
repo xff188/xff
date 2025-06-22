@@ -1,96 +1,77 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>COS极速跳转网关</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="MobileOptimized" content="320">
+  <title>COS跳转网关</title>
   <style>
-    :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --text-color: #f8f9fa;
-    }
-    * {
+    body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      position: relative;
+      overflow: hidden;
     }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: var(--text-color);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* 极简加载动画 */
-    .loader {
-      position: fixed;
+    .container {
+      width: 100px;
+      height: 100px;
+      position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 80px;
-      height: 80px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      animation: rotate-move 2s ease-in-out infinite;
     }
-    .loader-cell {
-      background: var(--primary-color);
-      border-radius: 4px;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    .loader-cell:nth-child(1) { animation-delay: 0.1s; }
-    .loader-cell:nth-child(2) { animation-delay: 0.3s; }
-    .loader-cell:nth-child(3) { animation-delay: 0.5s; }
-    .loader-cell:nth-child(4) { animation-delay: 0.2s; }
-    .loader-cell:nth-child(5) { animation-delay: 0.4s; }
-    .loader-cell:nth-child(6) { animation-delay: 0.6s; }
-    .loader-cell:nth-child(7) { animation-delay: 0.3s; }
-    .loader-cell:nth-child(8) { animation-delay: 0.5s; }
-    .loader-cell:nth-child(9) { animation-delay: 0.7s; }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.1); }
-    }
-
-    /* 响应式状态提示 */
-    .status-container {
-      position: fixed;
-      bottom: 25vh;
+    .dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background-color: #000;
+      position: absolute;
+      top: 0;
+      bottom: 0;
       left: 0;
       right: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      padding: 0 20px;
+      margin: auto;
     }
-    .progress-bar {
-      width: 100%;
-      max-width: 400px;
-      height: 6px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      width: 0;
-      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-      transition: width 0.2s linear;
-    }
-    .status-text {
-      text-align: center;
-      font-size: clamp(14px, 4vw, 18px);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .status-visible {
-      opacity: 1;
-    }
+    .dot-3 { background-color: #9b59b6; }
+    .dot-2 { background-color: #a683cc; }
+    .dot-1 { background-color: #d7bde2; }
+    .dot-3 { animation: dot-3-move 2s ease infinite; }
+    .dot-2 { animation: dot-2-move 2s ease infinite; }
+    .dot-1 { animation: dot-1-move 2s ease infinite; }
 
-    /* 自适应水印 */
+    @keyframes dot-3-move {
+      20% { transform: scale(1) }
+      45% { transform: translateY(-18px) scale(.45) }
+      60% { transform: translateY(-25px) scale(.45) }
+      80% { transform: translateY(-25px) scale(.45) }
+      100% { transform: translateY(0px) scale(1) }
+    }
+    @keyframes dot-2-move {
+      20% { transform: scale(1) }
+      45% { transform: translate(-16px, 12px) scale(.45) }
+      60% { transform: translate(-20px, 15px) scale(.45) }
+      80% { transform: translate(-20px, 15px) scale(.45) }
+      100% { transform: translateY(0px) scale(1) }
+    }
+    @keyframes dot-1-move {
+      20% { transform: scale(1) }
+      45% { transform: translate(16px, 12px) scale(.45) }
+      60% { transform: translate(20px, 15px) scale(.45) }
+      80% { transform: translate(20px, 15px) scale(.45) }
+      100% { transform: translateY(0px) scale(1) }
+    }
+    @keyframes rotate-move {
+      55% { transform: translate(-50%, -50%) rotate(0deg) }
+      80% { transform: translate(-50%, -50%) rotate(360deg) }
+      100% { transform: translate(-50%, -50%) rotate(360deg) }
+    }
     .watermark {
       position: fixed;
       top: 0;
@@ -102,10 +83,10 @@
       display: none;
       background: repeating-linear-gradient(
         -45deg,
-        rgba(67, 97, 238, 0.05),
-        rgba(67, 97, 238, 0.05) 10px,
-        rgba(63, 55, 201, 0.05) 10px,
-        rgba(63, 55, 201, 0.05) 20px
+        rgba(255,0,0,0.05),
+        rgba(255,0,0,0.05) 10px,
+        rgba(255,0,0,0.1) 10px,
+        rgba(255,0,0,0.1) 20px
       );
     }
     .watermark-text {
@@ -113,133 +94,62 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: clamp(16px, 5vw, 24px);
+      font-size: 24px;
       font-weight: bold;
-      color: rgba(255,255,255,0.7);
+      color: rgba(255,0,0,0.7);
       text-align: center;
       width: 90%;
     }
-
-    @media (max-width: 768px) {
-      .status-container {
-        bottom: 20vh;
-      }
-    }
   </style>
 </head>
-
 <body>
-  <!-- 加载动画 -->
-  <div class="loader" id="loader">
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-    <div class="loader-cell"></div>
-  </div>
+<div class="container" id="container">
+  <div class="dot dot-1"></div>
+  <div class="dot dot-2"></div>
+  <div class="dot dot-3"></div>
+</div>
+<div class="watermark" id="watermark">
+  <div class="watermark-text">小富富网络提醒你未授权</div>
+</div>
 
-  <!-- 状态提示 -->
-  <div class="status-container">
-    <div class="progress-bar">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
-    <div class="status-text" id="statusText"></div>
-  </div>
+<script>
+const ALLOWED_DOMAINS = [
+  'example.com',
+  'xffwz.com',
+  'trusted-domain.com'
+];
 
-  <!-- 水印 -->
-  <div class="watermark" id="watermark">
-    <div class="watermark-text">小富富网络通知你未授权请联系小富富付费</div>
-  </div>
+const urlParams = new URLSearchParams(window.location.search);
+const encodedParam = urlParams.get('key') || urlParams.get('url') || '';
+const targetUrl = atob(encodedParam);
+const watermark = document.getElementById('watermark');
 
-  <script>
-    (function() {
-      const loader = document.getElementById('loader');
-      const progressFill = document.getElementById('progressFill');
-      const statusText = document.getElementById('statusText');
-      const watermark = document.getElementById('watermark');
+if (targetUrl && targetUrl.includes("http")) {
+  let isAllowed = false;
+  try {
+    const domain = new URL(targetUrl).hostname.replace('www.', '');
+    isAllowed = ALLOWED_DOMAINS.some(d => 
+      domain === d || domain.endsWith(`.${d}`)
+    );
+  } catch(e) {
+    console.error('URL解析错误:', e);
+  }
 
-      function showStatus(text) {
-        statusText.textContent = text;
-        statusText.classList.add('status-visible');
-      }
-
-      function updateProgress(percent) {
-        progressFill.style.width = `${percent}%`;
-      }
-
-      function setupSecurity() {
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        const devtools = /./;
-        devtools.toString = function() {
-          watermark.style.display = 'block';
-          showStatus('安全警告：禁止调试访问');
-          return '';
-        };
-      }
-
-      function getRedirectKey() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('key') || params.get('url') || '';
-      }
-
-      function generateTargetUrl(key) {
-        if (/^https?:\/\//i.test(key)) {
-          return decodeURIComponent(key);
-        }
-        return `https://${getRandomCosEndpoint()}/${encodeURIComponent(key)}`;
-      }
-
-      function getRandomCosEndpoint() {
-        const endpoints = [
-          'cos.ap-shanghai.myqcloud.com',
-          'cos.ap-guangzhou.myqcloud.com',
-          'cos.ap-beijing.myqcloud.com'
-        ];
-        return endpoints[Math.floor(Math.random() * endpoints.length)];
-      }
-
-      async function executeRedirect() {
-        try {
-          loader.style.display = 'grid';
-          showStatus('正在启动跳转引擎...');
-          updateProgress(20);
-
-          const key = getRedirectKey();
-          if (!key) throw new Error('缺少跳转参数');
-
-          updateProgress(50);
-          showStatus('验证跳转权限...');
-          await new Promise(r => setTimeout(r, 200));
-
-          updateProgress(80);
-          showStatus('生成安全链接...');
-          const targetUrl = generateTargetUrl(key);
-          
-          updateProgress(100);
-          showStatus('正在跳转...');
-          
-          // 直接跳转（无按钮）
-          setTimeout(() => {
-            window.location.href = targetUrl;
-          }, 300);
-
-        } catch (error) {
-          loader.style.display = 'none';
-          watermark.style.display = 'block';
-          showStatus(`跳转失败: ${error.message}`);
-          updateProgress(0);
-        }
-      }
-
-      window.addEventListener('DOMContentLoaded', () => {
-        setupSecurity();
-        setTimeout(executeRedirect, 50);
-      });
-    })();
-  </script>
+  if (isAllowed) {
+    setTimeout(() => {
+      document.getElementById("container").style.display = "none";
+      window.location.href = targetUrl;
+    }, 1500);
+  } else {
+    watermark.style.display = 'block';
+    document.body.style.backgroundColor = '#fff';
+    document.getElementById("container").style.display = "none";
+    document.body.innerHTML += '<h1 style="text-align:center;margin-top:50px;color:red">未授权的跳转目标</h1>';
+  }
+} else {
+  watermark.style.display = 'block';
+  document.body.innerHTML = '<h1 style="text-align:center;margin-top:50px;color:red">无效的跳转URL</h1>';
+}
+</script>
 </body>
 </html>
