@@ -1,156 +1,192 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>安全跳转网关</title>
+  <title>安全跳转页面</title>
   <style>
-    /* 三点加载动画 */
+    /* 三点加载动画样式 */
     .container {
-      width: 110px;
-      height: 110px;
-      position: fixed;
+      width: 100px;
+      height: 100px;
+      position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: rotate-move 1.8s cubic-bezier(0.65,0,0.35,1) infinite;
+      animation: rotate-move 2s ease-in-out infinite;
       display: none;
-      z-index: 1000;
     }
     .dot {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
       position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
       margin: auto;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
-    .dot-3 { background: linear-gradient(135deg, #f74d75, #ff2d55); }
-    .dot-2 { background: linear-gradient(135deg, #10beae, #0ba899); }
-    .dot-1 { background: linear-gradient(135deg, #ffe386, #ffd700); }
+    .dot-3 { background-color: #f74d75; animation: dot-3-move 2s ease infinite; }
+    .dot-2 { background-color: #10beae; animation: dot-2-move 2s ease infinite; }
+    .dot-1 { background-color: #ffe386; animation: dot-1-move 2s ease infinite; }
+    
+    @keyframes dot-3-move {
+      20%,100% { transform: scale(1) }
+      45%,80% { transform: translateY(-18px) scale(.45) }
+    }
+    @keyframes dot-2-move {
+      20%,100% { transform: scale(1) }
+      45%,80% { transform: translate(-16px, 12px) scale(.45) }
+    }
+    @keyframes dot-1-move {
+      20%,100% { transform: scale(1) }
+      45%,80% { transform: translate(16px, 12px) scale(.45) }
+    }
+    @keyframes rotate-move {
+      55% { transform: translate(-50%, -50%) rotate(0deg) }
+      80%,100% { transform: translate(-50%, -50%) rotate(360deg) }
+    }
 
-    /* 水印保护 */
+    /* 全局水印样式 */
     .watermark {
       position: fixed;
       pointer-events: none;
       width: 100%;
       height: 100%;
-      background: repeating-linear-gradient(
+      background-image: repeating-linear-gradient(
         -45deg,
-        rgba(255,0,0,0.08),
-        rgba(255,0,0,0.08) 15px,
-        rgba(0,0,255,0.08) 15px,
-        rgba(0,0,255,0.08) 30px
+        rgba(255, 0, 0, 0.1),
+        rgba(255, 0, 0, 0.1) 20px,
+        rgba(0, 0, 255, 0.1) 20px,
+        rgba(0, 0, 255, 0.1) 40px
       );
-      z-index: 999;
+      z-index: 9999;
       display: none;
     }
     .watermark-text {
       position: absolute;
-      color: rgba(255,0,0,0.7);
-      font-size: 22px;
-      font-weight: 700;
+      color: rgba(255, 0, 0, 0.6);
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
       width: 100%;
       top: 50%;
       transform: translateY(-50%);
-      text-align: center;
+      text-shadow: 1px 1px 1px #fff;
     }
 
-    /* 内容容器 */
+    /* iframe样式 */
     .content {
       height: 100%;
       width: 100%;
       position: fixed;
-      inset: 0;
-      border: none;
+      inset: -2px;
       z-index: 1;
     }
   </style>
 </head>
+
 <body>
+  <!-- 三点加载动画容器 -->
   <div class="container" id="loadingContainer">
     <div class="dot dot-1"></div>
     <div class="dot dot-2"></div>
     <div class="dot dot-3"></div>
   </div>
 
+  <!-- 全局水印 -->
   <div class="watermark" id="watermark">
     <div class="watermark-text">提示：请联系小富富VX：zhengfuzhi88授权</div>
   </div>
 
   <script>
     (function() {
-      // 白名单配置（需与生成器保持一致）
-      const ALLOWED_DOMAINS = [
-        'xffwz.com',  // 替换为实际COS域名
-        'xffuw.com'           // 其他允许的域名
-      ];
+      // 白名单域名配置（预留位置方便后期添加）
+      const WHITELIST_CONFIG = {
+        domains: [
+          'xffwz.com',
+          'xffuw.com',
+          // 预留位置：在此添加新的白名单域名
+          // 'example.com',
+          // 'another-domain.net'
+        ],
+        // 预留其他配置项
+        watermarkText: '小富富网络通知你未授权请联系小富富付费'
+      };
 
-      // 启动跳转流程
-      function initRedirect() {
-        const loadingEl = document.getElementById('loadingContainer');
-        const watermarkEl = document.getElementById('watermark');
-        
-        loadingEl.style.display = 'block';
-        
-        try {
-          const urlParams = new URLSearchParams(location.search);
-          const encodedUrl = urlParams.get('c');
-          
-          if (!encodedUrl) {
-            showError(watermarkEl, loadingEl);
-            return;
-          }
-
-          const targetUrl = atob(encodedUrl);
-          if (!validateDomain(targetUrl)) {
-            showError(watermarkEl, loadingEl);
-            return;
-          }
-
-          createIframe(targetUrl, loadingEl);
-        } catch(e) {
-          showError(watermarkEl, loadingEl);
-        }
+      // 显示三点加载动画
+      function showLoadingAnimation() {
+        document.getElementById('loadingContainer').style.display = 'block';
       }
 
-      // 域名验证
-      function validateDomain(url) {
+      // 验证URL域名是否在白名单
+      function isAllowedDomain(url) {
         try {
           const domain = new URL(url).hostname.replace('www.', '');
-          return ALLOWED_DOMAINS.some(allowed => 
-            domain === allowed || domain.endsWith('.' + allowed)
-          );
-        } catch {
+          return WHITELIST_CONFIG.domains.some(allowedDomain => {
+            return domain === allowedDomain || 
+                   domain.endsWith('.' + allowedDomain);
+          });
+        } catch (e) {
+          console.error('URL解析失败:', e);
           return false;
         }
       }
-
-      // 创建跳转iframe
-      function createIframe(url, loadingEl) {
-        const iframe = document.createElement('iframe');
-        iframe.className = 'content';
-        iframe.src = url;
+     
+      // 主处理逻辑
+      function processRedirect() {
+        showLoadingAnimation();
         
-        iframe.onload = () => loadingEl.style.display = 'none';
-        iframe.onerror = () => showError(
-          document.getElementById('watermark'), 
-          loadingEl
-        );
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedParam = urlParams.get('c');
         
-        document.body.appendChild(iframe);
+        if (!encodedParam) {
+          document.getElementById('watermark').style.display = 'block';
+          document.getElementById('loadingContainer').style.display = 'none';
+          return;
+        }
+        
+        try {
+          const trueUrl = atob(encodedParam);
+          if (trueUrl.includes("http")) {
+            // 检查域名是否在白名单
+            if (!isAllowedDomain(trueUrl)) {
+              document.getElementById('watermark').style.display = 'block';
+              document.querySelector('.watermark-text').textContent = WHITELIST_CONFIG.watermarkText;
+            }
+            
+            // 创建并加载iframe
+            const iframe = document.createElement('iframe');
+            iframe.className = 'content';
+            iframe.src = trueUrl;
+            
+            iframe.addEventListener('load', function() {
+              document.getElementById('loadingContainer').style.display = 'none';
+            });
+            
+            document.body.appendChild(iframe);
+          }
+        } catch (e) {
+          console.error('URL解码失败:', e);
+          document.getElementById('watermark').style.display = 'block';
+          document.getElementById('loadingContainer').style.display = 'none';
+        }
       }
 
-      // 错误处理
-      function showError(watermarkEl, loadingEl) {
-        watermarkEl.style.display = 'block';
-        loadingEl.style.display = 'none';
-      }
+      // 禁止F12开发者工具
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'F12' || 
+            (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+            (e.ctrlKey && e.shiftKey && e.key === 'J') || 
+            (e.ctrlKey && e.key === 'U')) {
+          e.preventDefault();
+        }
+      });
 
-      // 启动执行
-      initRedirect();
+      processRedirect();
     })();
   </script>
 </body>
 </html>
-<code_end>
