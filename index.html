@@ -1,180 +1,244 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>安全跳转页面</title>
+  <title>COS极速跳转网关</title>
   <style>
-    /* 三点加载动画样式 */
-    .container {
-      width: 100px;
-      height: 100px;
+    :root {
+      --primary-color: #4361ee;
+      --secondary-color: #3f37c9;
+      --text-color: #f8f9fa;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: var(--text-color);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 极简加载动画 */
+    .loader {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .loader-cell {
+      background: var(--primary-color);
+      border-radius: 4px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .loader-cell:nth-child(1) { animation-delay: 0.1s; }
+    .loader-cell:nth-child(2) { animation-delay: 0.3s; }
+    .loader-cell:nth-child(3) { animation-delay: 0.5s; }
+    .loader-cell:nth-child(4) { animation-delay: 0.2s; }
+    .loader-cell:nth-child(5) { animation-delay: 0.4s; }
+    .loader-cell:nth-child(6) { animation-delay: 0.6s; }
+    .loader-cell:nth-child(7) { animation-delay: 0.3s; }
+    .loader-cell:nth-child(8) { animation-delay: 0.5s; }
+    .loader-cell:nth-child(9) { animation-delay: 0.7s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+
+    /* 响应式状态提示 */
+    .status-container {
+      position: fixed;
+      bottom: 25vh;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 0 20px;
+    }
+    .progress-bar {
+      width: 100%;
+      max-width: 400px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      transition: width 0.2s linear;
+    }
+    .status-text {
+      text-align: center;
+      font-size: clamp(14px, 4vw, 18px);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .status-visible {
+      opacity: 1;
+    }
+
+    /* 自适应水印 */
+    .watermark {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(67, 97, 238, 0.05),
+        rgba(67, 97, 238, 0.05) 10px,
+        rgba(63, 55, 201, 0.05) 10px,
+        rgba(63, 55, 201, 0.05) 20px
+      );
+    }
+    .watermark-text {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: rotate-move 2s ease-in-out infinite;
-      display: none;
-    }
-    .dot {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: auto;
-    }
-    .dot-3 { background-color: #f74d75; animation: dot-3-move 2s ease infinite; }
-    .dot-2 { background-color: #10beae; animation: dot-2-move 2s ease infinite; }
-    .dot-1 { background-color: #ffe386; animation: dot-1-move 2s ease infinite; }
-    
-    @keyframes dot-3-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translateY(-18px) scale(.45) }
-    }
-    @keyframes dot-2-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(-16px, 12px) scale(.45) }
-    }
-    @keyframes dot-1-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(16px, 12px) scale(.45) }
-    }
-    @keyframes rotate-move {
-      55% { transform: translate(-50%, -50%) rotate(0deg) }
-      80%,100% { transform: translate(-50%, -50%) rotate(360deg) }
-    }
-
-    /* 全局水印样式 */
-    .watermark {
-      position: fixed;
-      pointer-events: none;
-      width: 100%;
-      height: 100%;
-      background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(255, 0, 0, 0.1),
-        rgba(255, 0, 0, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 40px
-      );
-      z-index: 9999;
-      display: none;
-    }
-    .watermark-text {
-      position: absolute;
-      color: rgba(255, 0, 0, 0.6);
-      font-size: 18px;
+      font-size: clamp(16px, 5vw, 24px);
       font-weight: bold;
+      color: rgba(255,255,255,0.7);
       text-align: center;
-      width: 100%;
-      top: 50%;
-      transform: translateY(-50%);
-      text-shadow: 1px 1px 1px #fff;
+      width: 90%;
     }
 
-    /* iframe样式 */
-    .content {
-      height: 100%;
-      width: 100%;
-      position: fixed;
-      inset: -2px;
-      z-index: 1;
+    @media (max-width: 768px) {
+      .status-container {
+        bottom: 20vh;
+      }
     }
   </style>
 </head>
 
 <body>
-  <!-- 三点加载动画容器 -->
-  <div class="container" id="loadingContainer">
-    <div class="dot dot-1"></div>
-    <div class="dot dot-2"></div>
-    <div class="dot dot-3"></div>
+  <!-- 加载动画 -->
+  <div class="loader" id="loader">
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
+    <div class="loader-cell"></div>
   </div>
 
-  <!-- 全局水印 -->
+  <!-- 状态提示 -->
+  <div class="status-container">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="status-text" id="statusText"></div>
+  </div>
+
+  <!-- 水印 -->
   <div class="watermark" id="watermark">
     <div class="watermark-text">小富富网络通知你未授权请联系小富富付费</div>
   </div>
 
   <script>
     (function() {
-      // 白名单域名配置（预留位置方便后期添加）
-      const WHITELIST_CONFIG = {
-        domains: [
-          'xffwz.com',
-          // 预留位置：在此添加新的白名单域名
-          // 'example.com',
-          // 'another-domain.net'
-        ],
-        // 预留其他配置项
-        watermarkText: '小富富网络通知你未授权请联系小富富付费'
-      };
+      const loader = document.getElementById('loader');
+      const progressFill = document.getElementById('progressFill');
+      const statusText = document.getElementById('statusText');
+      const watermark = document.getElementById('watermark');
 
-      // 显示三点加载动画
-      function showLoadingAnimation() {
-        document.getElementById('loadingContainer').style.display = 'block';
+      function showStatus(text) {
+        statusText.textContent = text;
+        statusText.classList.add('status-visible');
       }
 
-      // 验证URL域名是否在白名单
-      function isAllowedDomain(url) {
+      function updateProgress(percent) {
+        progressFill.style.width = `${percent}%`;
+      }
+
+      function setupSecurity() {
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        const devtools = /./;
+        devtools.toString = function() {
+          watermark.style.display = 'block';
+          showStatus('安全警告：禁止调试访问');
+          return '';
+        };
+      }
+
+      function getRedirectKey() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('key') || params.get('url') || '';
+      }
+
+      function generateTargetUrl(key) {
+        if (/^https?:\/\//i.test(key)) {
+          return decodeURIComponent(key);
+        }
+        return `https://${getRandomCosEndpoint()}/${encodeURIComponent(key)}`;
+      }
+
+      function getRandomCosEndpoint() {
+        const endpoints = [
+          'cos.ap-shanghai.myqcloud.com',
+          'cos.ap-guangzhou.myqcloud.com',
+          'cos.ap-beijing.myqcloud.com'
+        ];
+        return endpoints[Math.floor(Math.random() * endpoints.length)];
+      }
+
+      async function executeRedirect() {
         try {
-          const domain = new URL(url).hostname.replace('www.', '');
-          return WHITELIST_CONFIG.domains.some(allowedDomain => {
-            return domain === allowedDomain || 
-                   domain.endsWith('.' + allowedDomain);
-          });
-        } catch (e) {
-          console.error('URL解析失败:', e);
-          return false;
-        }
-      }
-     
-      // 主处理逻辑
-      function processRedirect() {
-        showLoadingAnimation();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedParam = urlParams.get('c');
-        
-        if (!encodedParam) {
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
-          return;
-        }
-        
-        try {
-          const trueUrl = atob(encodedParam);
-          if (trueUrl.includes("http")) {
-            // 检查域名是否在白名单
-            if (!isAllowedDomain(trueUrl)) {
-              document.getElementById('watermark').style.display = 'block';
-              document.querySelector('.watermark-text').textContent = WHITELIST_CONFIG.watermarkText;
-            }
-            
-            // 创建并加载iframe
-            const iframe = document.createElement('iframe');
-            iframe.className = 'content';
-            iframe.src = trueUrl;
-            
-            iframe.addEventListener('load', function() {
-              document.getElementById('loadingContainer').style.display = 'none';
-            });
-            
-            document.body.appendChild(iframe);
-          }
-        } catch (e) {
-          console.error('URL解码失败:', e);
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
+          loader.style.display = 'grid';
+          showStatus('正在启动跳转引擎...');
+          updateProgress(20);
+
+          const key = getRedirectKey();
+          if (!key) throw new Error('缺少跳转参数');
+
+          updateProgress(50);
+          showStatus('验证跳转权限...');
+          await new Promise(r => setTimeout(r, 200));
+
+          updateProgress(80);
+          showStatus('生成安全链接...');
+          const targetUrl = generateTargetUrl(key);
+          
+          updateProgress(100);
+          showStatus('正在跳转...');
+          
+          // 直接跳转（无按钮）
+          setTimeout(() => {
+            window.location.href = targetUrl;
+          }, 300);
+
+        } catch (error) {
+          loader.style.display = 'none';
+          watermark.style.display = 'block';
+          showStatus(`跳转失败: ${error.message}`);
+          updateProgress(0);
         }
       }
 
-      processRedirect();
+      window.addEventListener('DOMContentLoaded', () => {
+        setupSecurity();
+        setTimeout(executeRedirect, 50);
+      });
     })();
   </script>
 </body>
