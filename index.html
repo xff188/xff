@@ -3,178 +3,207 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>安全跳转页面</title>
+  <title>安全跳转网关</title>
   <style>
-    /* 三点加载动画样式 */
-    .container {
-      width: 100px;
-      height: 100px;
+    :root {
+      --primary: #4361ee;
+      --error: #f72585;
+      --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-gradient);
+      color: #f8f9fa;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 三点加载动画 */
+    .loader {
+      width: 120px;
+      height: 120px;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: rotate-move 2s ease-in-out infinite;
-      display: none;
+      z-index: 100;
     }
     .dot {
-      width: 15px;
-      height: 15px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: auto;
+      filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
+      animation: float 2s ease-in-out infinite;
     }
-    .dot-3 { background-color: #f74d75; animation: dot-3-move 2s ease infinite; }
-    .dot-2 { background-color: #10beae; animation: dot-2-move 2s ease infinite; }
-    .dot-1 { background-color: #ffe386; animation: dot-1-move 2s ease infinite; }
-    
-    @keyframes dot-3-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translateY(-18px) scale(.45) }
+    .dot-1 { 
+      background-color: #ffe386;
+      top: 0; left: 50%;
+      animation-delay: 0s;
     }
-    @keyframes dot-2-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(-16px, 12px) scale(.45) }
+    .dot-2 { 
+      background-color: #10beae;
+      top: 30px; right: 15px;
+      animation-delay: 0.2s;
     }
-    @keyframes dot-1-move {
-      20%,100% { transform: scale(1) }
-      45%,80% { transform: translate(16px, 12px) scale(.45) }
+    .dot-3 { 
+      background-color: #f74d75;
+      bottom: 0; left: 50%;
+      animation-delay: 0.4s;
     }
-    @keyframes rotate-move {
-      55% { transform: translate(-50%, -50%) rotate(0deg) }
-      80%,100% { transform: translate(-50%, -50%) rotate(360deg) }
+    @keyframes float {
+      0%,100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.1); }
     }
 
-    /* 全局水印样式 */
+    /* 动态水印效果 */
     .watermark {
       position: fixed;
-      pointer-events: none;
       width: 100%;
       height: 100%;
-      background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(255, 0, 0, 0.1),
-        rgba(255, 0, 0, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 20px,
-        rgba(0, 0, 255, 0.1) 40px
-      );
+      pointer-events: none;
       z-index: 9999;
       display: none;
+      overflow: hidden;
     }
     .watermark-text {
       position: absolute;
-      color: rgba(255, 0, 0, 0.6);
-      font-size: 18px;
+      color: rgba(255, 0, 0, 0.15);
+      font-size: 24px;
       font-weight: bold;
-      text-align: center;
-      width: 100%;
-      top: 50%;
-      transform: translateY(-50%);
-      text-shadow: 1px 1px 1px #fff;
+      white-space: nowrap;
+      animation: move 20s linear infinite;
+      text-shadow: 0 0 5px rgba(255,255,255,0.3);
+      transform: rotate(-15deg);
+    }
+    @keyframes move {
+      0% { transform: translateX(-50%) rotate(-15deg); }
+      100% { transform: translateX(100vw) rotate(-15deg); }
     }
 
-    /* iframe样式 */
-    .content {
-      height: 100%;
-      width: 100%;
+    /* 状态提示 */
+    .status {
       position: fixed;
-      inset: -2px;
-      z-index: 1;
+      bottom: 20vh;
+      width: 100%;
+      text-align: center;
+      color: rgba(255,255,255,0.8);
+      font-size: 16px;
+      z-index: 110;
     }
   </style>
 </head>
-
 <body>
-  <!-- 三点加载动画容器 -->
-  <div class="container" id="loadingContainer">
+  <!-- 加载动画 -->
+  <div class="loader" id="loader">
     <div class="dot dot-1"></div>
     <div class="dot dot-2"></div>
     <div class="dot dot-3"></div>
   </div>
 
-  <!-- 全局水印 -->
-  <div class="watermark" id="watermark">
-    <div class="watermark-text">小富富网络通知你未授权请联系小富富付费</div>
-  </div>
+  <!-- 动态水印容器 -->
+  <div class="watermark" id="watermark"></div>
+
+  <!-- 状态提示 -->
+  <div class="status" id="status">正在验证跳转链接...</div>
 
   <script>
-    (function() {
-      // 白名单域名配置（预留位置方便后期添加）
-      const WHITELIST_CONFIG = {
-        domains: [
-          'xffwz.com',
-          // 预留位置：在此添加新的白名单域名
-          // 'example.com',
-          // 'another-domain.net'
-        ],
-        // 预留其他配置项
-        watermarkText: '小富富网络通知你未授权请联系小富富付费'
-      };
+    // 配置参数
+    const CONFIG = {
+      allowedDomains: ['xffwz.com', 'example.com'],
+      watermarkText: '小富富网络 - 未授权访问',
+      minLoadTime: 800,
+      redirectDelay: 100
+    };
 
-      // 显示三点加载动画
-      function showLoadingAnimation() {
-        document.getElementById('loadingContainer').style.display = 'block';
-      }
-
-      // 验证URL域名是否在白名单
-      function isAllowedDomain(url) {
-        try {
-          const domain = new URL(url).hostname.replace('www.', '');
-          return WHITELIST_CONFIG.domains.some(allowedDomain => {
-            return domain === allowedDomain || 
-                   domain.endsWith('.' + allowedDomain);
-          });
-        } catch (e) {
-          console.error('URL解析失败:', e);
-          return false;
+    // 初始化动态水印
+    function initWatermark() {
+      const watermark = document.getElementById('watermark');
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
+      
+      // 计算需要的水印数量
+      const cols = Math.ceil(containerWidth / 200);
+      const rows = Math.ceil(containerHeight / 150);
+      
+      // 生成水印元素
+      for(let i = 0; i < rows; i++) {
+        for(let j = 0; j < cols; j++) {
+          const text = document.createElement('div');
+          text.className = 'watermark-text';
+          text.textContent = CONFIG.watermarkText;
+          text.style.top = `${i * 150}px`;
+          text.style.left = `${j * 200}px`;
+          text.style.animationDelay = `${(i + j) % 5}s`;
+          watermark.appendChild(text);
         }
       }
-     
-      // 主处理逻辑
-      function processRedirect() {
-        showLoadingAnimation();
+    }
+
+    // 域名验证
+    function validateDomain(url) {
+      try {
+        const domain = new URL(url).hostname.replace('www.', '');
+        return CONFIG.allowedDomains.some(d => 
+          domain === d || domain.endsWith('.' + d)
+        );
+      } catch {
+        return false;
+      }
+    }
+
+    // 主处理逻辑
+    function processRedirect() {
+      const startTime = performance.now();
+      const loader = document.getElementById('loader');
+      const watermark = document.getElementById('watermark');
+      const status = document.getElementById('status');
+      
+      loader.style.display = 'block';
+      initWatermark();
+
+      // 解析URL参数
+      const params = new URLSearchParams(window.location.search);
+      const encodedUrl = params.get('url') || params.get('key') || '';
+      
+      if (!encodedUrl) {
+        status.textContent = '缺少跳转参数';
+        watermark.style.display = 'block';
+        loader.style.display = 'none';
+        return;
+      }
+
+      try {
+        const targetUrl = atob(encodedUrl);
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedParam = urlParams.get('c');
-        
-        if (!encodedParam) {
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
+        if (!validateDomain(targetUrl)) {
+          status.textContent = '未授权的目标网站';
+          watermark.style.display = 'block';
+          loader.style.display = 'none';
           return;
         }
-        
-        try {
-          const trueUrl = atob(encodedParam);
-          if (trueUrl.includes("http")) {
-            // 检查域名是否在白名单
-            if (!isAllowedDomain(trueUrl)) {
-              document.getElementById('watermark').style.display = 'block';
-              document.querySelector('.watermark-text').textContent = WHITELIST_CONFIG.watermarkText;
-            }
-            
-            // 创建并加载iframe
-            const iframe = document.createElement('iframe');
-            iframe.className = 'content';
-            iframe.src = trueUrl;
-            
-            iframe.addEventListener('load', function() {
-              document.getElementById('loadingContainer').style.display = 'none';
-            });
-            
-            document.body.appendChild(iframe);
-          }
-        } catch (e) {
-          console.error('URL解码失败:', e);
-          document.getElementById('watermark').style.display = 'block';
-          document.getElementById('loadingContainer').style.display = 'none';
-        }
-      }
 
-      processRedirect();
-    })();
+        // 确保最短加载时间
+        const loadTime = performance.now() - startTime;
+        const remainingTime = Math.max(0, CONFIG.minLoadTime - loadTime);
+        
+        setTimeout(() => {
+          loader.style.display = 'none';
+          window.location.href = targetUrl;
+        }, remainingTime);
+
+      } catch {
+        status.textContent = '跳转链接无效';
+        watermark.style.display = 'block';
+        loader.style.display = 'none';
+      }
+    }
+
+    // 启动处理
+    document.addEventListener('DOMContentLoaded', processRedirect);
   </script>
 </body>
 </html>
